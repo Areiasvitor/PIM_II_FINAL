@@ -1,0 +1,36 @@
+{
+  "intents": [
+    {
+      "name": "provas_substitutivas",
+      "patterns": [
+        "(?i)(perdi|perd[ií]).*prova.*(como funciona|o que fazer)",
+        "(?i)provas? substitutivas?.*(como funciona|o que fazer|funciona)"
+      ],
+      "action": "provas_substitutivas"
+    },
+    {
+      "name": "carteirinha_segunda_via",
+      "patterns": [
+        "(?i)(segunda via|2.?\\s*via).*carteirinha",
+        "(?i)como (solicitar|pedir).*carteirinha"
+      ],
+      "action": "carteirinha_segunda_via"
+    },
+    {
+      "name": "trancamento_disciplina",
+      "patterns": [
+        "(?i)trancamento.*disciplina",
+        "(?i)como (fa[cç]o|fazer) trancar (a|uma)? disciplina"
+      ],
+      "action": "trancamento_disciplina"
+    },
+    {
+      "name": "revisao_nota",
+      "patterns": [
+        "(?i)revis[aã]o de nota",
+        "(?i)como pedir revis[aã]o.*nota"
+      ],
+      "action": "revisao_nota"
+    }
+  ]
+}

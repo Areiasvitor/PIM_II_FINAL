@@ -1,0 +1,43 @@
+{
+  "alunos": {
+    "H76DJH0": {
+      "nome": "Vitor Areias",
+      "ra": "H76DJH0",
+      "curso": "ADS",
+      "np1": 10.0,
+      "np2": 10.0,
+      "pim": 10.0
+    }
+  },
+  "turmas": {
+    "01": {
+      "codigo": "01",
+      "nome": "ADS_NOTURNA",
+      "alunos": [
+        "H76DJH0"
+      ]
+    },
+    "TADS01": {
+      "codigo": "TADS01",
+      "nome": "TurmaTeste",
+      "alunos": [
+        "H76DJH0"
+      ]
+    }
+  },
+  "atividades": {
+    "1": {
+      "id": 1,
+      "turma_codigo": "TADS01",
+      "titulo": "Atividade de teste",
+      "data_entrega": "16/04/2035",
+      "entregas": {
+        "H76DJH0": {
+          "arquivo": "Atividade_teste_01",
+          "nota": 10.0
+        }
+      }
+    }
+  },
+  "next_id": 2
+}

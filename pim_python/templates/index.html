@@ -1,0 +1,674 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>PIM - Sistema Acad&ecirc;mico (UI)</title>
+  <link rel="stylesheet" href="/static/style.css?v=20251028" />
+</head>
+<body>
+  <header class="topbar shell">
+    <div class="brand">
+      <span class="brand-dot"></span>
+      <div>
+        <div>Sistema Acad&ecirc;mico PIM</div>
+        <div class="env" id="envLabel">Ambiente de apresenta&ccedil;&atilde;o &bull; <span id="authState">deslogado</span></div>
+      </div>
+    </div>
+    <div class="session">
+      <span class="badge" id="roleBadge">sem-perfil</span>
+      <span class="muted" id="whoami">-</span>
+      <button class="btn" id="btnLogout" onclick="logout()" disabled>Sair</button>
+    </div>
+  </header>
+
+  <main class="page shell">
+    <section class="login-area" id="loginArea">
+      <form class="card login-card" id="loginForm">
+        <h3>Acesso r&aacute;pido</h3>
+        <p class="muted">Use as credenciais de demonstra&ccedil;&atilde;o para navegar pelo painel.</p>
+        <div class="row">
+          <label style="width:120px" for="inpUser">Usu&aacute;rio</label>
+          <input class="input" id="inpUser" name="username" value="aluno" autocomplete="username" required />
+        </div>
+        <div class="row">
+          <label style="width:120px" for="inpPass">Senha</label>
+          <input class="input" id="inpPass" name="password" type="password" value="aluno123" autocomplete="current-password" required />
+        </div>
+        <div class="row" style="margin-top:12px">
+          <button class="btn primary" type="submit">Entrar</button>
+          <span class="muted">Aluno: <b>aluno/aluno123</b> &nbsp;|&nbsp; Professor: <b>professor/prof123</b></span>
+        </div>
+        <div id="outLogin" class="output hidden" style="margin-top:14px"></div>
+      </form>
+    </section>
+
+    <section class="dashboard hidden" id="dashboard">
+      <aside class="sidebar" id="navGrid">
+        <div class="user-card">
+          <div class="avatar" id="avatarInitial">?</div>
+          <div>
+            <strong id="sidebarName">Visitante</strong>
+            <span class="muted" id="sidebarRole">Perfil n&atilde;o definido</span>
+          </div>
+        </div>
+
+        <div class="menu-section" id="navAluno">
+          <h4>Aluno</h4>
+          <button class="menu-item" data-panel="panel_aluno_status">Meu Status</button>
+          <button class="menu-item" data-panel="panel_chatbot_sec">Chatbot Secretaria</button>
+        </div>
+
+        <div class="menu-section" id="navProfessor">
+          <h4>Professor</h4>
+          <button class="menu-item" data-panel="panel_prof_consulta">Consulta R&aacute;pida</button>
+          <button class="menu-item" data-panel="panel_chatbot_prof">Chatbot Professor</button>
+          <a class="menu-item link" href="/docs" target="_blank">Swagger (/docs)</a>
+        </div>
+      </aside>
+
+      <section class="workspace">
+        <section class="hero" id="heroSection">
+          <div class="hero-copy">
+            <span class="badge glow" id="heroBadge">Painel interativo</span>
+            <h1 id="heroTitle">Bem-vindo!</h1>
+            <p class="hero-subtitle" id="heroSubtitle">Fa&ccedil;a login para explorar os m&oacute;dulos acad&ecirc;micos dispon&iacute;veis.</p>
+            <div class="hero-actions">
+              <button class="btn primary" id="heroAction" data-panel-target="panel_aluno_status">Meu Status</button>
+              <a class="btn outline" href="/docs" target="_blank">Abrir Swagger</a>
+            </div>
+          </div>
+          <div class="hero-graphic">
+            <span class="orb orb-one"></span>
+            <span class="orb orb-two"></span>
+          </div>
+        </section>
+
+        <section class="stats" id="statsRow">
+          <article class="stat-card">
+            <span class="label">&Uacute;ltima a&ccedil;&atilde;o</span>
+            <strong id="statUltima">-</strong>
+            <span class="caption">Atualizado ap&oacute;s cada consulta</span>
+          </article>
+          <article class="stat-card">
+            <span class="label">Pend&ecirc;ncias</span>
+            <strong id="statPendencias">0</strong>
+            <span class="caption">Somat&oacute;rio das checagens recentes</span>
+          </article>
+          <article class="stat-card">
+            <span class="label">Status atual</span>
+            <strong id="statStatus">-</strong>
+            <span class="caption">Reflete o &uacute;ltimo RA consultado</span>
+          </article>
+        </section>
+
+        <section class="panel-stack">
+          <div class="card placeholder" id="panelPlaceholder">
+            <h3>Selecione um m&oacute;dulo</h3>
+            <p class="muted">Use o menu lateral para acessar os recursos dispon&iacute;veis para o seu perfil.</p>
+          </div>
+
+          <div class="card hidden" id="panel_aluno_status">
+            <h3>Meu Status</h3>
+            <div class="row">
+              <label style="width:120px">RA</label>
+              <input class="input" id="inpRAAluno" value="H76DJH0" />
+              <button class="btn primary" onclick="carregarStatusAluno()">Consultar</button>
+            </div>
+            <div id="outStatusAluno" class="output"></div>
+          </div>
+
+          <div class="card hidden" id="panel_chatbot_sec">
+            <h3>Chatbot &mdash; Secretaria (FAQ)</h3>
+            <div class="row" style="gap:6px; flex-wrap:wrap" id="sec_buttons"></div>
+            <div id="out_cb_sec" class="output"></div>
+          </div>
+
+          <div class="card hidden" id="panel_prof_consulta">
+            <h3>Consulta R&aacute;pida (Professor)</h3>
+
+            <div class="subcard">
+              <div class="row">
+                <label style="width:160px">Turma (c&oacute;digo)</label>
+                <input class="input" id="inpTurmaCR" value="TADS01" />
+                <button class="btn primary" onclick="crAtividades()">Atividades</button>
+              </div>
+              <div id="outCrAtv" class="output"></div>
+            </div>
+
+            <div class="subcard">
+              <div class="row">
+                <label style="width:160px">Turma (c&oacute;digo)</label>
+                <input class="input" id="inpTurmaPE" value="TADS01" />
+                <button class="btn" onclick="crPendEntrega()">Pend&ecirc;ncias de Entrega</button>
+              </div>
+              <div id="outCrPE" class="output"></div>
+            </div>
+
+            <div class="subcard">
+              <div class="row">
+                <label style="width:160px">Turma (c&oacute;digo)</label>
+                <input class="input" id="inpTurmaPN" value="TADS01" />
+                <button class="btn" onclick="crPendNotas()">Pend&ecirc;ncias de Notas</button>
+              </div>
+              <div id="outCrPN" class="output"></div>
+            </div>
+
+            <div class="subcard">
+              <div class="row" style="gap:6px; flex-wrap:wrap">
+                <label>RA</label><input class="input" id="inpRaNotas" value="H76DJH0" style="width:120px" />
+                <label>NP1</label><input class="input" id="inpNP1" placeholder="ex.: 8.0" style="width:100px" />
+                <label>NP2</label><input class="input" id="inpNP2" placeholder="ex.: 7.5" style="width:100px" />
+                <label>PIM</label><input class="input" id="inpPIM" placeholder="ex.: 9.0" style="width:100px" />
+                <button class="btn primary" onclick="crLancarNotas()">Lan&ccedil;ar/Atualizar Notas</button>
+              </div>
+              <div id="outCrNotas" class="output"></div>
+            </div>
+
+            <div class="subcard">
+              <div class="row">
+                <label style="width:160px">RA</label>
+                <input class="input" id="inpRaStatus" value="H76DJH0" />
+                <button class="btn" onclick="crStatus()">Status Atualizado</button>
+              </div>
+              <div id="outCrStatus" class="output"></div>
+            </div>
+          </div>
+
+          <div class="card hidden" id="panel_chatbot_prof">
+            <h3>Chatbot &mdash; Professor (FAQ)</h3>
+            <div class="row" id="prof_faq_btns" style="gap:6px; flex-wrap:wrap"></div>
+            <div id="out_cb_prof" class="output"></div>
+          </div>
+        </section>
+      </section>
+    </section>
+  </main>
+
+  <script>
+  const API = location.origin;
+
+  const el = (id) => document.getElementById(id);
+  const token = () => localStorage.getItem('token') || '';
+  const authHeaders = () => ({ Authorization: `Bearer ${token()}` });
+  const show = (id) => el(id)?.classList.remove('hidden');
+  const hide = (id) => el(id)?.classList.add('hidden');
+  const setText = (id, value) => { const node = el(id); if (node) node.textContent = value; };
+  const setHTML = (id, value) => { const node = el(id); if (node) node.innerHTML = value; };
+
+  const rolePanels = {
+    aluno: ['panel_aluno_status', 'panel_chatbot_sec'],
+    professor: ['panel_prof_consulta', 'panel_chatbot_prof'],
+  };
+  const defaultPanel = {
+    aluno: 'panel_aluno_status',
+    professor: 'panel_prof_consulta',
+  };
+  let currentRole = null;
+
+  const heroCopy = {
+    panel_aluno_status: { badge: 'Aluno', subtitle: 'Acompanhe notas, m\u00E9dia e situa\u00E7\u00E3o acad\u00EAmica.' },
+    panel_chatbot_sec: { badge: 'Atendimento', subtitle: 'Tire d\u00FAvidas r\u00E1pidas com a secretaria.' },
+    panel_prof_consulta: { badge: 'Professor', subtitle: 'Consultas unificadas para gerir turmas e notas.' },
+    panel_chatbot_prof: { badge: 'Atendimento', subtitle: 'FAQ dedicado ao corpo docente.' },
+  };
+
+  const setStat = (id, value, asHTML = false) => {
+    const node = el(id);
+    if (!node) return;
+    if (asHTML) node.innerHTML = value;
+    else node.textContent = value;
+  };
+
+  const noteAction = (label) => setStat('statUltima', label || '-');
+  const notePendencias = (count) => setStat('statPendencias', String(count ?? 0));
+  const noteStatus = (situacao) => setStat('statStatus', statusChip(situacao), true);
+
+  const statusChip = (txt) => {
+    const value = (txt || '-').toString();
+    const lower = value.toLowerCase();
+    let cls = 'info';
+    if (lower.includes('aprov')) cls = 'ok';
+    else if (lower.includes('reprov')) cls = 'err';
+    else if (lower.includes('pend')) cls = 'warn';
+    return `<span class="status ${cls}">${value}</span>`;
+  };
+
+  const renderTable = (headers, rows) => {
+    const thead = `<thead><tr>${headers.map((h) => `<th>${h}</th>`).join('')}</tr></thead>`;
+    const tbody = `<tbody>${rows.map((r) => `<tr>${r.map((c) => `<td>${c}</td>`).join('')}</tr>`).join('')}</tbody>`;
+    return `<table class="table">${thead}${tbody}</table>`;
+  };
+
+  const capitalize = (txt) => (!txt ? '-' : txt.charAt(0).toUpperCase() + txt.slice(1));
+
+  const updateAvatar = (name) => {
+    const avatar = el('avatarInitial');
+    if (!avatar) return;
+    const initial = (name || '').trim().charAt(0) || '?';
+    avatar.textContent = initial.toUpperCase();
+  };
+
+  const setHeroAction = (role) => {
+    const btn = el('heroAction');
+    if (!btn) return;
+    if (role === 'professor') {
+      btn.textContent = 'Consulta R\u00E1pida';
+      btn.dataset.panelTarget = 'panel_prof_consulta';
+    } else {
+      btn.textContent = 'Meu Status';
+      btn.dataset.panelTarget = 'panel_aluno_status';
+    }
+  };
+
+  const setHeroGreetings = (payload) => {
+    setHeroAction(payload?.role || null);
+    if (payload) {
+      setText('heroTitle', `Ol\u00E1, ${payload.username || 'usu\u00E1rio'}!`);
+      setText('heroSubtitle', payload.role === 'professor'
+        ? 'Acompanhe turmas, pend\u00EAncias e atualize notas com poucos cliques.'
+        : 'Consulte seu status acad\u00EAmico e converse com a secretaria.');
+      setText('heroBadge', `Perfil ${capitalize(payload.role)}`);
+    } else {
+      setText('heroTitle', 'Bem-vindo!');
+      setText('heroSubtitle', 'Fa\u00E7a login para explorar os m\u00F3dulos acad\u00EAmicos dispon\u00EDveis.');
+      setText('heroBadge', 'Painel interativo');
+    }
+  };
+
+  const highlightMenu = (targetId) => {
+    document.querySelectorAll('[data-panel]').forEach((btn) => {
+      const section = btn.closest('.menu-section');
+      const visible = section && !section.classList.contains('hidden') && !section.closest('.hidden');
+      btn.classList.toggle('active', visible && btn.dataset.panel === targetId);
+    });
+  };
+
+  const updateHeroByPanel = (panelId) => {
+    const info = heroCopy[panelId];
+    if (info) {
+      setText('heroBadge', info.badge);
+      setText('heroSubtitle', info.subtitle);
+    }
+  };
+
+  const showPanel = (key) => {
+    const allPanels = ['panel_aluno_status', 'panel_chatbot_sec', 'panel_prof_consulta', 'panel_chatbot_prof'];
+    allPanels.forEach(hide);
+    const placeholder = el('panelPlaceholder');
+    if (placeholder) placeholder.classList.remove('hidden');
+
+    let targetId = key || '';
+    if (targetId && !targetId.startsWith('panel_')) targetId = `panel_${targetId}`;
+    const allowed = rolePanels[currentRole] || allPanels;
+    if (!allowed.includes(targetId)) targetId = defaultPanel[currentRole] || allowed[0] || allPanels[0];
+
+    show(targetId);
+    if (placeholder) placeholder.classList.add('hidden');
+
+    if (targetId === 'panel_chatbot_sec') initChatbotSec();
+    if (targetId === 'panel_chatbot_prof') initChatbotProf();
+
+    highlightMenu(targetId);
+    updateHeroByPanel(targetId);
+  };
+
+  const setLoggedIn = (me) => {
+    currentRole = me.role || null;
+
+    hide('loginArea');
+    hide('loginForm');
+    show('dashboard');
+    show('navGrid');
+    setText('authState', 'logado');
+    setText('roleBadge', me.role || '-');
+    setText('whoami', me.username || '-');
+    setText('sidebarName', me.username || 'Usu\u00E1rio');
+    setText('sidebarRole', me.role ? `Perfil ${capitalize(me.role)}` : 'Perfil n\u00E3o definido');
+    updateAvatar(me.username);
+    el('btnLogout')?.removeAttribute('disabled');
+
+    show('panelPlaceholder');
+    hide('panel_aluno_status');
+    hide('panel_chatbot_sec');
+    hide('panel_prof_consulta');
+    hide('panel_chatbot_prof');
+    hide('navAluno');
+    hide('navProfessor');
+
+    if (currentRole === 'aluno') {
+      show('navAluno');
+    } else if (currentRole === 'professor') {
+      show('navProfessor');
+    } else {
+      show('navAluno');
+      show('navProfessor');
+    }
+
+    const initialPanel = defaultPanel[currentRole] || 'panel_aluno_status';
+    showPanel(initialPanel);
+    setHeroGreetings(me);
+  };
+
+  const setLoggedOut = () => {
+    currentRole = null;
+    show('loginArea');
+    show('loginForm');
+    hide('dashboard');
+    hide('navGrid');
+    hide('navAluno');
+    hide('navProfessor');
+    hide('panel_aluno_status');
+    hide('panel_chatbot_sec');
+    hide('panel_prof_consulta');
+    hide('panel_chatbot_prof');
+    show('panelPlaceholder');
+    setText('authState', 'deslogado');
+    setText('roleBadge', 'sem-perfil');
+    setText('whoami', '-');
+    setText('sidebarName', 'Visitante');
+    setText('sidebarRole', 'Perfil n\u00E3o definido');
+    updateAvatar('');
+    el('btnLogout')?.setAttribute('disabled', '');
+    document.querySelectorAll('[data-panel]').forEach((btn) => btn.classList.remove('active'));
+    setHeroGreetings(null);
+    noteAction('-');
+    notePendencias(0);
+    setStat('statStatus', '-', false);
+  };
+
+  const initAuth = async () => {
+    if (!token()) {
+      setLoggedOut();
+      return;
+    }
+    try {
+      const response = await fetch(`${API}/auth/me`, { headers: authHeaders() });
+      if (!response.ok) throw new Error('Sess\u00E3o inv\u00E1lida');
+      const me = await response.json();
+      setLoggedIn(me);
+    } catch (error) {
+      console.warn(error);
+      setLoggedOut();
+    }
+  };
+
+  const login = async () => {
+    const user = el('inpUser').value.trim();
+    const pass = el('inpPass').value.trim();
+    const out = el('outLogin');
+    out.classList.remove('hidden');
+    out.textContent = 'Entrando...';
+    try {
+      const response = await fetch(`${API}/auth/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username: user, password: pass }),
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.detail || 'Credenciais inv\u00E1lidas');
+      localStorage.setItem('token', data.token);
+      localStorage.setItem('role', data.role);
+      localStorage.setItem('username', data.username);
+      if (data.ra) localStorage.setItem('ra', data.ra);
+      out.textContent = 'Login realizado com sucesso!';
+      setLoggedIn(data);
+    } catch (error) {
+      out.textContent = `Erro: ${error.message}`;
+    }
+  };
+
+  const logout = async () => {
+    try {
+      await fetch(`${API}/auth/logout`, { method: 'POST', headers: authHeaders() });
+    } catch (error) {
+      console.warn(error);
+    }
+    localStorage.removeItem('token');
+    localStorage.removeItem('role');
+    localStorage.removeItem('username');
+    localStorage.removeItem('ra');
+    setLoggedOut();
+  };
+
+  const carregarStatusAluno = async () => {
+    const ra = el('inpRAAluno').value.trim();
+    const out = el('outStatusAluno');
+    out.innerHTML = 'Carregando...';
+    try {
+      const response = await fetch(`${API}/aluno/status/${encodeURIComponent(ra)}`, { headers: authHeaders() });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.detail || 'Erro ao consultar status');
+      const rows = [
+        ['RA', data.ra || '-'],
+        ['Nome', data.nome || '-'],
+        ['Curso', data.curso || '-'],
+        ['Turma', data.turma || '-'],
+        ['NP1', data.np1 ?? '-'],
+        ['NP2', data.np2 ?? '-'],
+        ['PIM', data.pim ?? '-'],
+        ['M\u00E9dia', data.media ?? '-'],
+        ['Situa\u00E7\u00E3o', statusChip(data.situacao)],
+      ];
+      out.innerHTML = renderTable(['Campo', 'Valor'], rows);
+      noteAction('Status do aluno');
+      noteStatus(data.situacao || '-');
+    } catch (error) {
+      out.innerHTML = `<span class="status err">${error.message}</span>`;
+    }
+  };
+
+  const crAtividades = async () => {
+    const turma = el('inpTurmaCR').value.trim();
+    const out = el('outCrAtv');
+    out.innerHTML = 'Carregando...';
+    try {
+      const response = await fetch(`${API}/consulta_rapida/atividades/${encodeURIComponent(turma)}`, { headers: authHeaders() });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.detail || 'Erro ao listar atividades');
+      const rows = (data.atividades || []).map((a) => [a.id, a.titulo, a.data_entrega]);
+      out.innerHTML = rows.length ? renderTable(['ID', 'T&iacute;tulo', 'Entrega'], rows) : '<span class="muted">Nenhuma atividade cadastrada.</span>';
+      noteAction('Consulta de atividades');
+    } catch (error) {
+      out.innerHTML = `<span class="status err">${error.message}</span>`;
+    }
+  };
+
+  const crPendEntrega = async () => {
+    const turma = el('inpTurmaPE').value.trim();
+    const out = el('outCrPE');
+    out.innerHTML = 'Carregando...';
+    try {
+      const response = await fetch(`${API}/consulta_rapida/pendencias/entrega/${encodeURIComponent(turma)}`, { headers: authHeaders() });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.detail || 'Erro ao listar pend\u00EAncias de entrega');
+      let total = 0;
+      const rows = Object.entries(data.pendencias_entrega || {}).map(([atividade, ras]) => {
+        const lista = Array.isArray(ras) ? ras : [];
+        total += lista.length;
+        return [atividade, lista.length, `<div>${lista.map((ra) => `<span class="tag pending">${ra}</span>`).join(' ')}</div>`];
+      });
+      out.innerHTML = rows.length ? renderTable(['Atividade', 'Pendentes', 'RAs'], rows) : '<span class="muted">Nenhuma pend&ecirc;ncia encontrada.</span>';
+      notePendencias(total);
+      noteAction('Pend\u00EAncias de entrega');
+    } catch (error) {
+      out.innerHTML = `<span class="status err">${error.message}</span>`;
+    }
+  };
+
+  const crPendNotas = async () => {
+    const turma = el('inpTurmaPN').value.trim();
+    const out = el('outCrPN');
+    out.innerHTML = 'Carregando...';
+    try {
+      const response = await fetch(`${API}/consulta_rapida/pendencias/notas/${encodeURIComponent(turma)}`, { headers: authHeaders() });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.detail || 'Erro ao listar pend\u00EAncias de notas');
+      let total = 0;
+      const rows = Object.entries(data.pendencias_notas || {}).map(([atividade, ras]) => {
+        const lista = Array.isArray(ras) ? ras : [];
+        total += lista.length;
+        return [atividade, lista.length, `<div>${lista.map((ra) => `<span class="tag warn">${ra}</span>`).join(' ')}</div>`];
+      });
+      out.innerHTML = rows.length ? renderTable(['Atividade', 'Sem nota', 'RAs'], rows) : '<span class="muted">Nenhuma pend&ecirc;ncia encontrada.</span>';
+      notePendencias(total);
+      noteAction('Pend\u00EAncias de notas');
+    } catch (error) {
+      out.innerHTML = `<span class="status err">${error.message}</span>`;
+    }
+  };
+
+  const crLancarNotas = async () => {
+    const ra = el('inpRaNotas').value.trim();
+    const out = el('outCrNotas');
+    const np1 = el('inpNP1').value.trim();
+    const np2 = el('inpNP2').value.trim();
+    const pim = el('inpPIM').value.trim();
+    const payload = {};
+    if (np1) payload.np1 = parseFloat(np1);
+    if (np2) payload.np2 = parseFloat(np2);
+    if (pim) payload.pim = parseFloat(pim);
+    out.innerHTML = 'Salvando...';
+    try {
+      const response = await fetch(`${API}/consulta_rapida/notas/${encodeURIComponent(ra)}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...authHeaders() },
+        body: JSON.stringify(payload),
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.detail || data.mensagem || 'Erro ao lan\u00E7ar notas');
+      const rows = [
+        ['RA', data.ra],
+        ['NP1', data.np1 ?? '-'],
+        ['NP2', data.np2 ?? '-'],
+        ['PIM', data.pim ?? '-'],
+        ['M\u00E9dia', data.media ?? '-'],
+        ['Situa\u00E7\u00E3o', statusChip(data.situacao)],
+      ];
+      out.innerHTML = renderTable(['Campo', 'Valor'], rows);
+      noteStatus(data.situacao || '-');
+      noteAction('Notas atualizadas');
+    } catch (error) {
+      out.innerHTML = `<span class="status err">${error.message}</span>`;
+    }
+  };
+
+  const crStatus = async () => {
+    const ra = el('inpRaStatus').value.trim();
+    const out = el('outCrStatus');
+    out.innerHTML = 'Carregando...';
+    try {
+      const response = await fetch(`${API}/consulta_rapida/status/${encodeURIComponent(ra)}`, { headers: authHeaders() });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.detail || 'Erro ao consultar status');
+      const rows = [
+        ['RA', data.ra],
+        ['NP1', data.np1 ?? '-'],
+        ['NP2', data.np2 ?? '-'],
+        ['PIM', data.pim ?? '-'],
+        ['M\u00E9dia', data.media ?? '-'],
+        ['Situa\u00E7\u00E3o', statusChip(data.situacao)],
+      ];
+      out.innerHTML = renderTable(['Campo', 'Valor'], rows);
+      noteStatus(data.situacao || '-');
+      noteAction('Status atualizado');
+    } catch (error) {
+      out.innerHTML = `<span class="status err">${error.message}</span>`;
+    }
+  };
+
+  let secFaqLoaded = false;
+  const initChatbotSec = async () => {
+    if (secFaqLoaded) return;
+    secFaqLoaded = true;
+    const container = el('sec_buttons');
+    if (!container) return;
+    container.innerHTML = 'Carregando...';
+    try {
+      const response = await fetch(`${API}/chatbot/faq`);
+      const data = await response.json();
+      const btns = (data.faq || []).map((item) => `<button class="btn" data-faq-sec="${item.key}">${item.pergunta}</button>`).join(' ');
+      container.innerHTML = btns;
+      container.querySelectorAll('[data-faq-sec]').forEach((btn) => {
+        btn.addEventListener('click', async () => {
+          const out = el('out_cb_sec');
+          out.innerHTML = '...';
+          const key = btn.dataset.faqSec;
+          const result = await fetch(`${API}/chatbot/faq/${encodeURIComponent(key)}`, { method: 'POST' });
+          const info = await result.json();
+          out.innerHTML = renderTable(['Pergunta', 'Resposta'], [[info.pergunta || '-', info.resposta || '-']]);
+          noteAction('Chatbot secretaria');
+        });
+      });
+    } catch (error) {
+      container.innerHTML = `<span class="status err">${error.message}</span>`;
+    }
+  };
+
+  let profFaqLoaded = false;
+  const initChatbotProf = async () => {
+    if (profFaqLoaded) return;
+    profFaqLoaded = true;
+    const container = el('prof_faq_btns');
+    if (!container) return;
+    container.innerHTML = 'Carregando...';
+    try {
+      const response = await fetch(`${API}/chatbot_prof/faq`);
+      const data = await response.json();
+      const btns = (data.faq || []).map((item) => `<button class="btn" data-faq-prof="${item.key}">${item.pergunta}</button>`).join(' ');
+      container.innerHTML = btns;
+      container.querySelectorAll('[data-faq-prof]').forEach((btn) => {
+        btn.addEventListener('click', async () => {
+          const out = el('out_cb_prof');
+          out.innerHTML = '...';
+          const key = btn.dataset.faqProf;
+          const result = await fetch(`${API}/chatbot_prof/faq/${encodeURIComponent(key)}`, { method: 'POST' });
+          const info = await result.json();
+          out.innerHTML = renderTable(['Pergunta', 'Resposta'], [[info.pergunta || '-', info.resposta || '-']]);
+          noteAction('Chatbot professor');
+        });
+      });
+    } catch (error) {
+      container.innerHTML = `<span class="status err">${error.message}</span>`;
+    }
+  };
+
+  document.querySelectorAll('[data-panel]').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      showPanel(btn.dataset.panel);
+    });
+  });
+
+  document.querySelectorAll('[data-panel-target]').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const target = btn.dataset.panelTarget;
+      if (target) showPanel(target);
+    });
+  });
+
+  const heroActionBtn = el('heroAction');
+  heroActionBtn?.addEventListener('click', () => {
+    const target = heroActionBtn.dataset.panelTarget;
+    if (target) showPanel(target);
+  });
+
+  const loginForm = el('loginForm');
+  loginForm?.addEventListener('submit', (event) => {
+    event.preventDefault();
+    login();
+  });
+
+  initAuth();
+
+  window.carregarStatusAluno = carregarStatusAluno;
+  window.crAtividades = crAtividades;
+  window.crPendEntrega = crPendEntrega;
+  window.crPendNotas = crPendNotas;
+  window.crLancarNotas = crLancarNotas;
+  window.crStatus = crStatus;
+  window.login = login;
+  window.logout = logout;
+  window.showPanel = showPanel;
+</script>
+</body>
+</html>

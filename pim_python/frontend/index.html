@@ -1,0 +1,431 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <title>PIM — Sistema Acadêmico (Frontend)</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <!--
+    ==============================================================
+    PIM Frontend Completo
+    --------------------------------------------------------------
+    Abas:
+      • Status da API (online/offline + link para /docs)
+      • Alunos          → CRUD básico (criar, listar)
+      • Turmas          → criar turma, vincular alunos, listar atividades da turma
+      • Atividades      → criar, entregar arquivo (nome), lançar nota
+      • Relatórios      → média, distribuição de notas, panorama da turma
+      • Chatbot         → APENAS Secretaria/FAQ (coeso com backend)
+    Como servir localmente:
+      1) Iniciar API: uvicorn app.main:app --reload
+      2) Servir HTML: python -m http.server 5500
+      3) Abrir: http://127.0.0.1:5500
+    ==============================================================
+  -->
+  <style>
+    :root{
+      --bg:#0b1220; --card:#111a2b; --muted:#94a3b8; --text:#e2e8f0; --accent:#60a5fa;
+      --ok:#22c55e; --bad:#ef4444; --border:#1f2a44; --chip:#0a1222;
+    }
+    *{box-sizing:border-box}
+    body{margin:0; font-family:system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+      background:linear-gradient(180deg,#0a0f1c,#0b1220 60%,#0b1220); color:var(--text);}
+    header{padding:18px 14px; border-bottom:1px solid var(--border); position:sticky; top:0;
+      backdrop-filter:saturate(140%) blur(6px); background:rgba(11,18,32,0.8);}
+    .wrap{max-width:1100px; margin:0 auto; padding:14px}
+    h1{margin:0; font-size:20px} .subtitle{color:var(--muted); margin-top:4px; font-size:13px}
+    .tabs{display:flex; gap:8px; margin-top:12px; flex-wrap:wrap}
+    .tab{padding:9px 12px; border:1px solid var(--border); border-radius:10px; background:#0d1626; cursor:pointer}
+    .tab.active{background:#162a57; font-weight:700}
+    .card{margin-top:14px; background:linear-gradient(180deg,#0d1626,#0f1a2d); border:1px solid var(--border);
+      border-radius:14px; padding:14px; box-shadow:0 6px 20px rgba(0,0,0,.25), inset 0 1px 0 rgba(255,255,255,.03);}
+    h2{margin:0 0 10px} .muted{color:var(--muted)}
+    .row{display:flex; gap:10px; align-items:center; flex-wrap:wrap}
+    .pill{font-size:12px; padding:6px 10px; border-radius:999px; border:1px solid var(--border); background:var(--chip)}
+    .ok{color:#13e37e} .bad{color:#ff7067}
+    .btn{border:1px solid var(--border); background:#132241; color:var(--text); padding:9px 12px; border-radius:10px; cursor:pointer}
+    .btn:hover{background:#162a57}
+    .input, textarea, select{
+      padding:10px 11px; border-radius:10px; border:1px solid var(--border); background:#0a1222; color:var(--text); outline:none}
+    textarea{min-height:90px; resize:vertical; width:100%}
+    .grid{display:grid; gap:12px; grid-template-columns:repeat(12,1fr)}
+    .col-6{grid-column:span 6} @media(max-width:900px){ .col-6{grid-column:span 12} }
+    pre, .box{white-space:pre-wrap; background:#0a1222; border:1px solid var(--border); border-radius:10px; padding:12px}
+    ul{margin:8px 0 0 18px} li{margin:3px 0}
+    a{color:var(--accent); text-decoration:none} a:hover{text-decoration:underline}
+    .kbd{background:#0a1222; border:1px solid var(--border); padding:2px 6px; border-radius:6px}
+  </style>
+</head>
+<body>
+  <header>
+    <div class="wrap">
+      <h1>PIM — Sistema Acadêmico</h1>
+      <div class="subtitle">Frontend simples para testar a API e o Chatbot de Secretaria/FAQ</div>
+      <div class="tabs" id="tabs"></div>
+    </div>
+  </header>
+
+  <main class="wrap">
+    <!-- ===================== STATUS ===================== -->
+    <section id="tab-status" class="card">
+      <h2>Status da API</h2>
+      <div class="row">
+        <div id="apiStatus" class="pill">Verificando...</div>
+        <button class="btn" onclick="checkApi()">Reverificar</button>
+        <a id="docsLink" class="btn" href="#" target="_blank" rel="noreferrer">Abrir /docs</a>
+      </div>
+      <div id="apiInfo" class="muted" style="margin-top:10px"></div>
+    </section>
+
+    <!-- ===================== ALUNOS ===================== -->
+    <section id="tab-alunos" class="card" hidden>
+      <h2>Alunos</h2>
+      <div class="grid">
+        <div class="col-6">
+          <div class="muted">Cadastrar aluno</div>
+          <div class="row" style="margin-top:8px">
+            <input id="al_nome" class="input" placeholder="Nome" />
+            <input id="al_ra" class="input" placeholder="RA" />
+            <input id="al_curso" class="input" placeholder="Curso" />
+            <button class="btn" onclick="criarAluno()">Cadastrar</button>
+          </div>
+        </div>
+        <div class="col-6">
+          <div class="muted">Listar alunos</div>
+          <div class="row" style="margin-top:8px">
+            <button class="btn" onclick="listarAlunos()">Atualizar lista</button>
+          </div>
+          <pre id="alunosOut" class="box" style="margin-top:8px">Sem dados</pre>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===================== TURMAS ===================== -->
+    <section id="tab-turmas" class="card" hidden>
+      <h2>Turmas</h2>
+      <div class="grid">
+        <div class="col-6">
+          <div class="muted">Criar turma</div>
+          <div class="row" style="margin-top:8px">
+            <input id="tu_codigo" class="input" placeholder="Código (ex.: TADS01)" />
+            <input id="tu_nome" class="input" placeholder="Nome" />
+            <button class="btn" onclick="criarTurma()">Criar</button>
+          </div>
+
+          <div class="muted" style="margin-top:12px">Vincular aluno à turma</div>
+          <div class="row" style="margin-top:8px">
+            <input id="tu_cod_aluno" class="input" placeholder="Código da turma" />
+            <input id="tu_ra" class="input" placeholder="RA do aluno" />
+            <button class="btn" onclick="vincularAluno()">Vincular</button>
+          </div>
+        </div>
+
+        <div class="col-6">
+          <div class="muted">Listar atividades da turma</div>
+          <div class="row" style="margin-top:8px">
+            <input id="tu_cod_list" class="input" placeholder="Código da turma" />
+            <button class="btn" onclick="listarAtividadesDaTurma()">Listar</button>
+          </div>
+          <pre id="turmasOut" class="box" style="margin-top:8px">Sem dados</pre>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===================== ATIVIDADES ===================== -->
+    <section id="tab-atividades" class="card" hidden>
+      <h2>Atividades</h2>
+      <div class="grid">
+        <div class="col-6">
+          <div class="muted">Criar atividade</div>
+          <div class="row" style="margin-top:8px">
+            <input id="atv_turma" class="input" placeholder="Código da turma (ex.: TADS01)" />
+            <input id="atv_titulo" class="input" placeholder="Título da atividade" />
+            <input id="atv_data" class="input" placeholder="Data de entrega (AAAA-MM-DD)" />
+            <button class="btn" onclick="criarAtividade()">Criar</button>
+          </div>
+
+          <div class="muted" style="margin-top:12px">Entregar atividade (arquivo = nome simbólico)</div>
+          <div class="row" style="margin-top:8px">
+            <input id="ent_id" class="input" placeholder="ID da atividade" />
+            <input id="ent_ra" class="input" placeholder="RA do aluno" />
+            <input id="ent_arq" class="input" placeholder="Nome do arquivo (ex.: trabalho.pdf)" />
+            <button class="btn" onclick="entregarAtividade()">Entregar</button>
+          </div>
+
+          <div class="muted" style="margin-top:12px">Lançar nota</div>
+          <div class="row" style="margin-top:8px">
+            <input id="nota_id" class="input" placeholder="ID da atividade" />
+            <input id="nota_ra" class="input" placeholder="RA do aluno" />
+            <input id="nota_val" class="input" placeholder="Nota (0..10)" />
+            <button class="btn" onclick="lancarNota()">Lançar</button>
+          </div>
+        </div>
+
+        <div class="col-6">
+          <div class="muted">Saída</div>
+          <pre id="ativOut" class="box" style="margin-top:8px">Sem dados</pre>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===================== RELATÓRIOS ===================== -->
+    <section id="tab-relatorios" class="card" hidden>
+      <h2>Relatórios</h2>
+      <div class="grid">
+        <div class="col-6">
+          <div class="muted">Média de notas por atividade</div>
+          <div class="row" style="margin-top:8px">
+            <input id="rel_media_id" class="input" placeholder="ID da atividade" />
+            <button class="btn" onclick="getMedia()">Consultar média</button>
+          </div>
+
+          <div class="muted" style="margin-top:12px">Distribuição de notas (0..10)</div>
+          <div class="row" style="margin-top:8px">
+            <input id="rel_dist_id" class="input" placeholder="ID da atividade" />
+            <button class="btn" onclick="getDistribuicao()">Consultar distribuição</button>
+          </div>
+
+          <div class="muted" style="margin-top:12px">Panorama da turma</div>
+          <div class="row" style="margin-top:8px">
+            <input id="rel_turma_cod" class="input" placeholder="Código da turma (ex.: TADS01)" />
+            <button class="btn" onclick="getRelatorioTurma()">Consultar</button>
+          </div>
+        </div>
+
+        <div class="col-6">
+          <div class="muted">Saída</div>
+          <pre id="relOut" class="box" style="margin-top:8px">Sem dados</pre>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===================== CHATBOT (SECRETARIA/FAQ SOMENTE) ===================== -->
+    <section id="tab-chatbot" class="card" hidden>
+      <h2>Chatbot — Secretaria/FAQ</h2>
+      <div class="muted">Este chatbot responde apenas dúvidas de Secretaria (coeso). Para dados/relatórios, use as abas acima.</div>
+      <div class="grid" style="margin-top:10px">
+        <div class="col-6">
+          <div class="muted"><b>Exemplos que reconhece</b></div>
+          <ul id="faqExamples"></ul>
+        </div>
+        <div class="col-6">
+          <div class="muted">Faça sua pergunta</div>
+          <textarea id="chatInput" placeholder="Ex.: Perdi uma prova, como funciona as provas substitutivas?"></textarea>
+          <div class="row" style="margin-top:8px">
+            <button class="btn" onclick="perguntar()">Perguntar</button>
+            <button class="btn" onclick="fillEx(0)">Exemplo 1</button>
+            <button class="btn" onclick="fillEx(1)">Exemplo 2</button>
+            <button class="btn" onclick="fillEx(2)">Exemplo 3</button>
+            <button class="btn" onclick="fillEx(3)">Exemplo 4</button>
+          </div>
+        </div>
+      </div>
+      <pre id="chatOut" class="box" style="margin-top:8px">Aguardando pergunta…</pre>
+    </section>
+  </main>
+
+  <script>
+    // ========================= CONFIG =========================
+    const API_BASE = "http://127.0.0.1:8000"; // troque aqui se necessário
+    document.getElementById("docsLink").href = `${API_BASE}/docs`;
+
+    // Tabs (rotas visíveis no topo)
+    const TABS = [
+      { id:"status", label:"Status" },
+      { id:"alunos", label:"Alunos" },
+      { id:"turmas", label:"Turmas" },
+      { id:"atividades", label:"Atividades" },
+      { id:"relatorios", label:"Relatórios" },
+      { id:"chatbot", label:"Chatbot (Secretaria)" }
+    ];
+
+    // ========================= HTTP Helpers =========================
+    async function httpGet(path){
+      const res = await fetch(`${API_BASE}${path}`);
+      if(!res.ok) throw new Error(`GET ${path} → ${res.status}`);
+      return res.json();
+    }
+    async function httpPost(path, body){
+      const res = await fetch(`${API_BASE}${path}`,{
+        method:"POST",
+        headers:{ "Content-Type":"application/json" },
+        body: JSON.stringify(body||{})
+      });
+      const txt = await res.text();
+      try{
+        const json = JSON.parse(txt);
+        if(!res.ok) throw new Error(json?.detail || `POST ${path} → ${res.status}`);
+        return json;
+      }catch(e){
+        if(!res.ok) throw new Error(txt || `POST ${path} → ${res.status}`);
+        return { raw: txt };
+      }
+    }
+
+    // ========================= Status =========================
+    async function checkApi(){
+      const pill = document.getElementById("apiStatus");
+      const info = document.getElementById("apiInfo");
+      pill.textContent = "Verificando…"; pill.className = "pill";
+      try{
+        const root = await httpGet("/");
+        pill.textContent = "API: online"; pill.className = "pill ok";
+        info.textContent = JSON.stringify(root);
+      }catch(err){
+        pill.textContent = "API: offline"; pill.className = "pill bad";
+        info.textContent = String(err);
+      }
+    }
+    checkApi();
+
+    // ========================= Tabs UI =========================
+    (function renderTabs(){
+      const c = document.getElementById("tabs");
+      for(const t of TABS){
+        const btn = document.createElement("button");
+        btn.className = "tab";
+        btn.textContent = t.label;
+        btn.onclick = ()=>selectTab(t.id);
+        btn.id = `tabbtn-${t.id}`;
+        c.appendChild(btn);
+      }
+      selectTab("status");
+    })();
+
+    function selectTab(id){
+      for(const t of TABS){
+        const sec = document.getElementById(`tab-${t.id}`);
+        const btn = document.getElementById(`tabbtn-${t.id}`);
+        const active = (t.id === id);
+        sec.hidden = !active;
+        btn.classList.toggle("active", active);
+      }
+    }
+
+    // ========================= Alunos =========================
+    async function criarAluno(){
+      const nome = val("al_nome"), ra = val("al_ra"), curso = val("al_curso");
+      try{
+        const r = await httpPost("/alunos/", { nome, ra, curso });
+        set("alunosOut", JSON.stringify(r, null, 2));
+      }catch(err){ set("alunosOut", `Erro: ${err}`); }
+    }
+    async function listarAlunos(){
+      try{
+        const r = await httpGet("/alunos/");
+        set("alunosOut", JSON.stringify(r, null, 2));
+      }catch(err){ set("alunosOut", `Erro: ${err}`); }
+    }
+
+    // ========================= Turmas =========================
+    async function criarTurma(){
+      const codigo = val("tu_codigo"), nome = val("tu_nome");
+      try{
+        const r = await httpPost("/turmas/", { codigo, nome });
+        set("turmasOut", JSON.stringify(r, null, 2));
+      }catch(err){ set("turmasOut", `Erro: ${err}`); }
+    }
+    async function vincularAluno(){
+      const cod = val("tu_cod_aluno"), ra = val("tu_ra");
+      try{
+        const r = await httpPost(`/turmas/${encodeURIComponent(cod)}/alunos/${encodeURIComponent(ra)}`, {});
+        set("turmasOut", JSON.stringify(r, null, 2));
+      }catch(err){ set("turmasOut", `Erro: ${err}`); }
+    }
+    async function listarAtividadesDaTurma(){
+      const cod = val("tu_cod_list");
+      try{
+        const r = await httpGet(`/turmas/${encodeURIComponent(cod)}/atividades`);
+        set("turmasOut", JSON.stringify(r, null, 2));
+      }catch(err){ set("turmasOut", `Erro: ${err}`); }
+    }
+
+    // ========================= Atividades =========================
+    async function criarAtividade(){
+      const turma_codigo = val("atv_turma");
+      const titulo = val("atv_titulo");
+      const data_entrega = val("atv_data");
+      try{
+        const r = await httpPost("/atividades/", { turma_codigo, titulo, data_entrega });
+        set("ativOut", JSON.stringify(r, null, 2));
+      }catch(err){ set("ativOut", `Erro: ${err}`); }
+    }
+    async function entregarAtividade(){
+      const id = val("ent_id"), ra = val("ent_ra"), arquivo = val("ent_arq");
+      try{
+        const r = await httpPost(`/atividades/${encodeURIComponent(id)}/entregar`, { ra, arquivo });
+        set("ativOut", JSON.stringify(r, null, 2));
+      }catch(err){ set("ativOut", `Erro: ${err}`); }
+    }
+    async function lancarNota(){
+      const id = val("nota_id"), ra = val("nota_ra"), nota = Number(val("nota_val"));
+      try{
+        const r = await httpPost(`/atividades/${encodeURIComponent(id)}/nota`, { ra, nota });
+        set("ativOut", JSON.stringify(r, null, 2));
+      }catch(err){ set("ativOut", `Erro: ${err}`); }
+    }
+
+    // ========================= Relatórios =========================
+    async function getMedia(){
+      const id = val("rel_media_id");
+      try{
+        const r = await httpGet(`/relatorios/notas/media/${encodeURIComponent(id)}`);
+        set("relOut", JSON.stringify(r, null, 2));
+      }catch(err){ set("relOut", `Erro: ${err}`); }
+    }
+    async function getDistribuicao(){
+      const id = val("rel_dist_id");
+      try{
+        const r = await httpGet(`/relatorios/notas/distribuicao/${encodeURIComponent(id)}`);
+        set("relOut", JSON.stringify(r, null, 2));
+      }catch(err){ set("relOut", `Erro: ${err}`); }
+    }
+    async function getRelatorioTurma(){
+      const cod = val("rel_turma_cod");
+      try{
+        const r = await httpGet(`/relatorios/turma/${encodeURIComponent(cod)}`);
+        set("relOut", JSON.stringify(r, null, 2));
+      }catch(err){ set("relOut", `Erro: ${err}`); }
+    }
+
+    // ========================= Chatbot (Secretaria/FAQ) =========================
+    const examples = [
+      "Perdi uma prova, como funciona as provas substitutivas?",
+      "Como solicitar segunda via da carteirinha?",
+      "Como faço trancamento de disciplina?",
+      "Como pedir revisão de nota?"
+    ];
+    (function renderFaq(){
+      const ul = document.getElementById("faqExamples");
+      ul.innerHTML = "";
+      for(const e of examples){
+        const li = document.createElement("li");
+        li.textContent = `“${e}”`;
+        ul.appendChild(li);
+      }
+    })();
+    function fillEx(i){ document.getElementById("chatInput").value = examples[i] || examples[0]; }
+    async function perguntar(){
+      const pergunta = (document.getElementById("chatInput").value || "").trim();
+      const out = document.getElementById("chatOut");
+      if(!pergunta){ out.textContent = "Digite uma pergunta de Secretaria/FAQ."; return; }
+      out.textContent = "Consultando…";
+      try{
+        const r = await httpPost("/chatbot/perguntar", { pergunta });
+        out.textContent = [
+          `Pergunta: ${r.pergunta}`,
+          `Intent: ${r.intent ?? "não reconhecida"}`,
+          "",
+          String(r.resposta || "(sem resposta)")
+        ].join("\n");
+      }catch(err){ out.textContent = `Erro: ${err}`; }
+    }
+    document.getElementById("chatInput")?.addEventListener("keydown",(ev)=>{
+      if(ev.key === "Enter" && !ev.shiftKey){ ev.preventDefault(); perguntar(); }
+    });
+
+    // ========================= Helpers =========================
+    function val(id){ return document.getElementById(id).value; }
+    function set(id, txt){ document.getElementById(id).textContent = txt; }
+  </script>
+</body>
+</html>
